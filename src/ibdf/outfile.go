@@ -35,7 +35,7 @@ type OutPacketFile struct {
 	outFile *piff.OutFile
 }
 
-func NewOutPacketFile(filename string) (*OutPacketFile, error) {
+func NewOutPacketFile(filename string, schemaPayload []byte) (*OutPacketFile, error) {
 	newPiffFile, err := piff.NewOutFile(filename)
 	if err != nil {
 		return nil, err
@@ -43,6 +43,7 @@ func NewOutPacketFile(filename string) (*OutPacketFile, error) {
 	c := &OutPacketFile{
 		outFile: newPiffFile,
 	}
+	c.outFile.WriteChunkTypeIDString("sch1", schemaPayload)
 	return c, nil
 }
 

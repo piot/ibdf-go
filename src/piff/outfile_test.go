@@ -7,7 +7,7 @@ import (
 
 func TestReadWrite(t *testing.T) {
 	const testString = "this is a string"
-	const ibdFilename = "test.ibd"
+	const ibdFilename = "test.ibdf"
 	const typeID = "cafe"
 	f, outErr := NewOutFile(ibdFilename)
 	if outErr != nil {

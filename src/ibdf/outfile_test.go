@@ -8,10 +8,10 @@ import (
 
 func TestReadWritePacket(t *testing.T) {
 	const testString = "this is a string"
-	const ibdFilename = "test.ibd"
+	const ibdFilename = "test.ibdf"
 	const typeID = "cafe"
 	octetPayload := []byte(testString)
-	f, outErr := NewOutPacketFile(ibdFilename)
+	f, outErr := NewOutPacketFile(ibdFilename, nil)
 	if outErr != nil {
 		t.Fatal(outErr)
 	}
