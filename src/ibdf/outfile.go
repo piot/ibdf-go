@@ -28,7 +28,7 @@ package ibdf
 
 import (
 	"github.com/piot/brook-go/src/outstream"
-	"github.com/piot/ibdf-go/src/piff"
+	"github.com/piot/piff-go/src/piff"
 )
 
 type OutPacketFile struct {

@@ -30,7 +30,7 @@ import (
 	"fmt"
 
 	"github.com/piot/brook-go/src/instream"
-	"github.com/piot/ibdf-go/src/piff"
+	"github.com/piot/piff-go/src/piff"
 )
 
 type InPacketFile struct {
