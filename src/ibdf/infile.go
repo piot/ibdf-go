@@ -34,7 +34,25 @@ import (
 )
 
 type InPacketFile struct {
-	inFile *piff.InFile
+	inFile        *piff.InFile
+	schemaPayload []byte
+}
+
+func (c *InPacketFile) SchemaPayload() []byte {
+	return c.schemaPayload
+}
+
+func (c *InPacketFile) readSchema() ([]byte, error) {
+	header, payload, readErr := c.inFile.ReadChunk()
+	if readErr != nil {
+		return nil, readErr
+	}
+	fmt.Printf("header:%v\n", header)
+	if header.TypeIDString() != "sch1" {
+		return nil, fmt.Errorf("wrong schema typeid %v", header)
+	}
+
+	return payload, nil
 }
 
 func NewInPacketFile(filename string) (*InPacketFile, error) {
@@ -45,7 +63,12 @@ func NewInPacketFile(filename string) (*InPacketFile, error) {
 	c := &InPacketFile{
 		inFile: newPiffFile,
 	}
-	return c, nil
+	schemaOctets, err := c.readSchema()
+	if err != nil {
+		return nil, err
+	}
+	c.schemaPayload = schemaOctets
+	return c, err
 }
 
 func (c *InPacketFile) ReadPacket() (uint8, uint64, []byte, error) {

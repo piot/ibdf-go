@@ -21,7 +21,10 @@ func TestReadWritePacket(t *testing.T) {
 	}
 	f.Close()
 
-	i, _ := NewInPacketFile(ibdFilename)
+	i, openErr := NewInPacketFile(ibdFilename)
+	if openErr != nil {
+		t.Fatal(openErr)
+	}
 
 	cmd, time, payload, readErr := i.ReadPacket()
 

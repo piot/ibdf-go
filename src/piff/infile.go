@@ -112,12 +112,13 @@ func (c *InFile) ReadChunk() (InHeader, []byte, error) {
 	if err != nil {
 		return InHeader{}, nil, err
 	}
+	savedHeader := c.header
 
-	if octetsRead != c.header.octetLength {
+	if octetsRead != savedHeader.octetLength {
 		return InHeader{}, nil, fmt.Errorf("couldnt read the whole payload")
 	}
 	headerErr := c.readHeader()
-	return c.header, payload, headerErr
+	return savedHeader, payload, headerErr
 }
 
 func (c *InFile) Close() {
