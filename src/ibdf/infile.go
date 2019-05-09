@@ -47,7 +47,6 @@ func (c *InPacketFile) readSchema() ([]byte, error) {
 	if readErr != nil {
 		return nil, readErr
 	}
-	fmt.Printf("header:%v\n", header)
 	if header.TypeIDString() != "sch1" {
 		return nil, fmt.Errorf("wrong schema typeid %v", header)
 	}
