@@ -70,25 +70,47 @@ func NewInPacketFile(filename string) (*InPacketFile, error) {
 	return c, err
 }
 
+const pktHeaderOctetCount = 1 + 8
+
+func (c *InPacketFile) ReadPacketSkipPayload() (uint8, uint64, int, error) {
+	header, pktHeader, headerErr := c.inFile.ReadPartChunk(pktHeaderOctetCount)
+	if headerErr != nil {
+		return 0, 0, 0, headerErr
+	}
+	cmd, monotonicTimeMs, serializeErr := deserializeHeader(header, pktHeader)
+	return cmd, monotonicTimeMs, header.OctetCount(), serializeErr
+}
+
+func deserializeHeader(header piff.InHeader, payload []byte) (uint8, uint64, error) {
+	if header.TypeIDString() != "pkt1" {
+		return 0, 0, fmt.Errorf("wrong typeid %v", header)
+	}
+	if len(payload) != 9 {
+		return 0, 0, fmt.Errorf("wrong serialized header size")
+	}
+	s := instream.New(payload)
+	cmd, cmdErr := s.ReadUint8()
+	if cmdErr != nil {
+		return 0, 0, cmdErr
+	}
+	monotonicTimeMs, timeMsErr := s.ReadUint64()
+	if timeMsErr != nil {
+		return 0, 0, timeMsErr
+	}
+	return cmd, monotonicTimeMs, nil
+}
+
 func (c *InPacketFile) ReadPacket() (uint8, uint64, []byte, error) {
 	header, payload, readErr := c.inFile.ReadChunk()
 	if readErr != nil {
 		return 0, 0, nil, readErr
 	}
-	if header.TypeIDString() != "pkt1" {
-		return 0, 0, nil, fmt.Errorf("wrong typeid %v", header)
+	pktHeaderOctets := payload[:pktHeaderOctetCount]
+	cmd, monotonicTimeMs, serializeErr := deserializeHeader(header, pktHeaderOctets)
+	if serializeErr != nil {
+		return 0, 0, nil, serializeErr
 	}
-	s := instream.New(payload)
-	cmd, cmdErr := s.ReadUint8()
-	if cmdErr != nil {
-		return 0, 0, nil, cmdErr
-	}
-	monotonicTimeMs, timeMsErr := s.ReadUint64()
-	if timeMsErr != nil {
-		return 0, 0, nil, timeMsErr
-	}
-
-	return cmd, monotonicTimeMs, payload[1+8:], nil
+	return cmd, monotonicTimeMs, payload[pktHeaderOctetCount:], nil
 }
 
 func (c *InPacketFile) Close() {
