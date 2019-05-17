@@ -26,7 +26,7 @@ func TestReadWritePacket(t *testing.T) {
 		t.Fatal(openErr)
 	}
 
-	cmd, time, payload, readErr := i.ReadPacket()
+	cmd, time, payload, readErr := i.ReadNextPacket()
 
 	if readErr != nil {
 		t.Fatal(readErr)
@@ -46,7 +46,7 @@ func TestReadWritePacket(t *testing.T) {
 	if string(payload) != testString {
 		t.Errorf("wrong string")
 	}
-	_, _, _, nextReadErr := i.ReadPacket()
+	_, _, _, nextReadErr := i.ReadNextPacket()
 	if nextReadErr != io.EOF {
 		t.Errorf("file should have ended")
 	}

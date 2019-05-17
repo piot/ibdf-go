@@ -65,7 +65,7 @@ func (c *InPacketFile) SchemaPayload() []byte {
 func (c *InPacketFile) readSchema() ([]byte, error) {
 	header, payload, readErr := c.inFile.ReadChunk()
 	if readErr != nil {
-		return nil, readErr
+		return nil, fmt.Errorf("read schema %v", readErr)
 	}
 	if header.TypeIDString() != "sch1" {
 		return nil, fmt.Errorf("wrong schema typeid %v", header)
