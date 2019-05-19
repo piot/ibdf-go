@@ -103,11 +103,10 @@ func (c *InPacketFile) scanAllChunks() error {
 		infos = append(infos, headerInfo)
 	}
 
-	if !foundSomeState {
-		return fmt.Errorf("ibdf file must contain at least one state")
-	}
-
 	c.infos = infos
+	if !foundSomeState {
+		return &MissingStateError{}
+	}
 
 	return nil
 }
@@ -176,7 +175,10 @@ func NewInPacketFile(filename string) (*InPacketFile, error) {
 	}
 	c.schemaPayload = schemaOctets
 
-	c.scanAllChunks()
+	scanChunksErr := c.scanAllChunks()
+	if scanChunksErr != nil {
+		return c, scanChunksErr
+	}
 	return c, err
 }
 
