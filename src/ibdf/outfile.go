@@ -31,12 +31,19 @@ import (
 	"github.com/piot/piff-go/src/piff"
 )
 
+type PacketDirection = uint8
+
+const (
+	CmdOutgoingPacket PacketDirection = 0x81
+	CmdIncomingPacket PacketDirection = 0x01
+)
+
 type OutPacketFile struct {
-	outFile *piff.OutFile
+	outFile *piff.OutStream
 }
 
 func NewOutPacketFile(filename string, schemaPayload []byte) (*OutPacketFile, error) {
-	newPiffFile, err := piff.NewOutFile(filename)
+	newPiffFile, err := piff.NewOutStream(filename)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +54,7 @@ func NewOutPacketFile(filename string, schemaPayload []byte) (*OutPacketFile, er
 	return c, nil
 }
 
-func (c *OutPacketFile) writePacket(cmd uint8, monotonicTimeMs int64, b []byte) error {
+func (c *OutPacketFile) writePacket(cmd PacketDirection, monotonicTimeMs int64, b []byte) error {
 	s := outstream.New()
 	s.WriteUint8(cmd)
 	s.WriteUint64(uint64(monotonicTimeMs))
@@ -56,11 +63,18 @@ func (c *OutPacketFile) writePacket(cmd uint8, monotonicTimeMs int64, b []byte) 
 }
 
 func (c *OutPacketFile) DebugIncomingPacket(b []byte, monotonicTimeMs int64) error {
-	return c.writePacket(0x01, monotonicTimeMs, b)
+	return c.writePacket(CmdIncomingPacket, monotonicTimeMs, b)
 }
 
 func (c *OutPacketFile) DebugOutgoingPacket(b []byte, monotonicTimeMs int64) error {
-	return c.writePacket(0x81, monotonicTimeMs, b)
+	return c.writePacket(CmdOutgoingPacket, monotonicTimeMs, b)
+}
+
+func (c *OutPacketFile) DebugState(stateOctets []byte, monotonicTimeMs int64) error {
+	s := outstream.New()
+	s.WriteUint64(uint64(monotonicTimeMs))
+	s.WriteOctets(stateOctets)
+	return c.outFile.WriteChunkTypeIDString("sta1", s.Octets())
 }
 
 func (c *OutPacketFile) Close() {

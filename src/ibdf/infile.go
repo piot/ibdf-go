@@ -28,14 +28,35 @@ package ibdf
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/piot/brook-go/src/instream"
 	"github.com/piot/piff-go/src/piff"
 )
 
+type PacketIndex uint32
+
+type PacketType uint8
+
+const (
+	PacketTypeState PacketType = iota
+	PacketTypeNormal
+)
+
+type HeaderInfo struct {
+	packetIndex PacketIndex
+	packetType  PacketType
+	timestamp   int64
+}
+
 type InPacketFile struct {
-	inFile        *piff.InFile
-	schemaPayload []byte
+	inFile            *piff.InSeeker
+	schemaPayload     []byte
+	infos             []HeaderInfo
+	cursorPacketIndex PacketIndex
+
+	startTime int64
+	endTime   int64
 }
 
 func (c *InPacketFile) SchemaPayload() []byte {
@@ -43,9 +64,9 @@ func (c *InPacketFile) SchemaPayload() []byte {
 }
 
 func (c *InPacketFile) readSchema() ([]byte, error) {
-	header, payload, readErr := c.inFile.ReadChunk()
+	header, payload, readErr := c.inFile.FindChunk(0)
 	if readErr != nil {
-		return nil, readErr
+		return nil, fmt.Errorf("read schema %v", readErr)
 	}
 	if header.TypeIDString() != "sch1" {
 		return nil, fmt.Errorf("wrong schema typeid %v", header)
@@ -54,63 +75,200 @@ func (c *InPacketFile) readSchema() ([]byte, error) {
 	return payload, nil
 }
 
+func (c *InPacketFile) scanAllChunks() error {
+	var infos []HeaderInfo
+	foundSomeState := false
+	for packetIndex, seekHeader := range c.inFile.AllHeaders() {
+		id := seekHeader.Header().TypeIDString()
+		var headerInfo HeaderInfo
+		switch id {
+		case "sta1":
+			_, octets, foundErr := c.inFile.FindPartialChunk(packetIndex, 8)
+			if foundErr != nil {
+				return foundErr
+			}
+			stream := instream.New(octets)
+			timestamp, timestampErr := stream.ReadUint64()
+			if timestampErr != nil {
+				return timestampErr
+			}
+			headerInfo = HeaderInfo{packetType: PacketTypeState, packetIndex: PacketIndex(packetIndex), timestamp: int64(timestamp)}
+			foundSomeState = true
+		case "pkt1":
+			headerInfo = HeaderInfo{packetType: PacketTypeNormal, packetIndex: PacketIndex(packetIndex), timestamp: 0}
+		case "sch1": // do nothing
+		default:
+			return fmt.Errorf("unknown type id %s", id)
+		}
+		infos = append(infos, headerInfo)
+	}
+
+	if !foundSomeState {
+		return fmt.Errorf("ibdf file must contain at least one state")
+	}
+
+	c.infos = infos
+
+	return nil
+}
+
+func (c *InPacketFile) getInfo(packetIndex PacketIndex) HeaderInfo {
+	return c.infos[packetIndex]
+}
+
+func (c *InPacketFile) CursorAtState() bool {
+	info := c.getInfo(c.cursorPacketIndex)
+	return info.packetType == PacketTypeState
+}
+
+func (c *InPacketFile) CursorAtPacket() bool {
+	info := c.getInfo(c.cursorPacketIndex)
+	return info.packetType == PacketTypeNormal
+}
+
+func (c *InPacketFile) findClosestState(timestamp int64) *HeaderInfo {
+	var foundStateInfo *HeaderInfo
+	for _, info := range c.infos {
+		if info.packetType != PacketTypeState {
+			continue
+		}
+		if info.timestamp > timestamp {
+			return foundStateInfo
+		}
+		foundStateInfo = &info
+	}
+	return foundStateInfo
+}
+
+func (c *InPacketFile) seekToClosestState(timestamp int64) error {
+	headerInfo := c.findClosestState(timestamp)
+	if headerInfo == nil {
+		return fmt.Errorf("couldn't find any states at timestamp %d", timestamp)
+	}
+	c.cursorPacketIndex = headerInfo.packetIndex
+	return nil
+}
+
+func (c *InPacketFile) SeekAndGetState(timestamp int64) (uint64, []byte, error) {
+	err := c.seekToClosestState(timestamp)
+	if err != nil {
+		return 0, nil, err
+	}
+	return c.ReadNextStatePacket()
+}
+
+func (c *InPacketFile) Cursor() PacketIndex {
+	return c.cursorPacketIndex
+}
+
 func NewInPacketFile(filename string) (*InPacketFile, error) {
-	newPiffFile, err := piff.NewInFile(filename)
+	newPiffFile, err := piff.NewInSeekerFile(filename)
 	if err != nil {
 		return nil, err
 	}
 	c := &InPacketFile{
-		inFile: newPiffFile,
+		inFile:            newPiffFile,
+		cursorPacketIndex: 1,
 	}
 	schemaOctets, err := c.readSchema()
 	if err != nil {
 		return nil, err
 	}
 	c.schemaPayload = schemaOctets
+
+	c.scanAllChunks()
 	return c, err
 }
 
 const pktHeaderOctetCount = 1 + 8
+const pktHeaderStateOctetCount = 8
 
-func (c *InPacketFile) ReadPacketSkipPayload() (uint8, uint64, int, error) {
-	header, pktHeader, headerErr := c.inFile.ReadPartChunk(pktHeaderOctetCount)
-	if headerErr != nil {
-		return 0, 0, 0, headerErr
+func deserializeStateHeader(header piff.InHeader, payload []byte) (uint64, error) {
+	if header.TypeIDString() != "sta1" {
+		return 0, fmt.Errorf("wrong typeid %v", header)
 	}
-	cmd, monotonicTimeMs, serializeErr := deserializeHeader(header, pktHeader)
-	return cmd, monotonicTimeMs, header.OctetCount(), serializeErr
+	if len(payload) != pktHeaderStateOctetCount {
+		return 0, fmt.Errorf("wrong serialized header size")
+	}
+	s := instream.New(payload)
+	monotonicTimeMs, timeMsErr := s.ReadUint64()
+	if timeMsErr != nil {
+		return 0, timeMsErr
+	}
+	return monotonicTimeMs, nil
 }
 
-func deserializeHeader(header piff.InHeader, payload []byte) (uint8, uint64, error) {
+func deserializePacketHeader(header piff.InHeader, payload []byte) (PacketDirection, uint64, error) {
 	if header.TypeIDString() != "pkt1" {
 		return 0, 0, fmt.Errorf("wrong typeid %v", header)
 	}
-	if len(payload) != 9 {
+	if len(payload) != pktHeaderOctetCount {
 		return 0, 0, fmt.Errorf("wrong serialized header size")
 	}
 	s := instream.New(payload)
-	cmd, cmdErr := s.ReadUint8()
+	cmdValue, cmdErr := s.ReadUint8()
 	if cmdErr != nil {
 		return 0, 0, cmdErr
+	}
+	switch cmdValue {
+	case CmdIncomingPacket:
+	case CmdOutgoingPacket:
+	default:
+		return CmdIncomingPacket, 0, fmt.Errorf("unknown direction")
 	}
 	monotonicTimeMs, timeMsErr := s.ReadUint64()
 	if timeMsErr != nil {
 		return 0, 0, timeMsErr
 	}
-	return cmd, monotonicTimeMs, nil
+	return cmdValue, monotonicTimeMs, nil
 }
 
-func (c *InPacketFile) ReadPacket() (uint8, uint64, []byte, error) {
-	header, payload, readErr := c.inFile.ReadChunk()
+func (c *InPacketFile) advanceCursor() {
+	c.cursorPacketIndex++
+}
+
+func (c *InPacketFile) IsEOF() bool {
+	return int(c.cursorPacketIndex) >= len(c.infos)
+}
+
+func (c *InPacketFile) ReadNextPacket() (PacketDirection, uint64, []byte, error) {
+	if c.IsEOF() {
+		return 0, 0, nil, io.EOF
+	}
+	for c.CursorAtState() {
+		c.advanceCursor()
+	}
+	if c.IsEOF() {
+		return 0, 0, nil, io.EOF
+	}
+	header, payload, readErr := c.inFile.FindChunk(int(c.cursorPacketIndex))
 	if readErr != nil {
 		return 0, 0, nil, readErr
 	}
+	c.advanceCursor()
 	pktHeaderOctets := payload[:pktHeaderOctetCount]
-	cmd, monotonicTimeMs, serializeErr := deserializeHeader(header, pktHeaderOctets)
+	cmd, monotonicTimeMs, serializeErr := deserializePacketHeader(header, pktHeaderOctets)
 	if serializeErr != nil {
 		return 0, 0, nil, serializeErr
 	}
 	return cmd, monotonicTimeMs, payload[pktHeaderOctetCount:], nil
+}
+
+func (c *InPacketFile) ReadNextStatePacket() (uint64, []byte, error) {
+	if c.IsEOF() {
+		return 0, nil, io.EOF
+	}
+	header, payload, readErr := c.inFile.FindChunk(int(c.cursorPacketIndex))
+	if readErr != nil {
+		return 0, nil, readErr
+	}
+	c.advanceCursor()
+	pktHeaderStateOctets := payload[:pktHeaderStateOctetCount]
+	monotonicTimeMs, serializeErr := deserializeStateHeader(header, pktHeaderStateOctets)
+	if serializeErr != nil {
+		return 0, nil, serializeErr
+	}
+	return monotonicTimeMs, payload[pktHeaderStateOctetCount:], nil
 }
 
 func (c *InPacketFile) Close() {
