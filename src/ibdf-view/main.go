@@ -40,10 +40,15 @@ import (
 )
 
 func options() string {
-	var piffFile string
-	flag.StringVar(&piffFile, "filename", "", "file to view")
+	//var piffFile string
+	//	flag.StringVar(&piffFile, "filename", "", "file to view")
 	flag.Parse()
-	return piffFile
+	count := flag.NArg()
+	if count < 1 {
+		return ""
+	}
+	ibdfFilename := flag.Arg(0)
+	return ibdfFilename
 }
 
 func cmdToString(direction ibdf.PacketDirection) string {
