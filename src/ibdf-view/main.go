@@ -54,9 +54,9 @@ func options() string {
 func cmdToString(direction ibdf.PacketDirection) string {
 	switch direction {
 	case ibdf.CmdIncomingPacket:
-		return "<< (int)"
+		return "<< (int) "
 	case ibdf.CmdOutgoingPacket:
-		return ">> (out)"
+		return ">> (out) "
 	default:
 		panic("unknown direction")
 	}
@@ -75,6 +75,10 @@ func openReadSeeker(filename string) (io.ReadSeeker, error) {
 	}
 
 	return seekerToUse, nil
+}
+
+func octetsToString(payload []byte) string {
+	return strings.TrimSpace(hex.Dump(payload))
 }
 
 func run(filename string, log *clog.Log) error {
@@ -110,13 +114,13 @@ func run(filename string, log *clog.Log) error {
 				break
 			}
 			cmdString := cmdToString(cmd)
-			color.HiMagenta("#%d %s time:%v %v", packetIndex, cmdString, time, strings.TrimSpace(hex.Dump(payload)))
+			color.HiMagenta("#%04d %s time:%v %v", packetIndex, cmdString, time, octetsToString(payload))
 		} else if inStream.IsNextState() {
 			time, statePayload, readErr := inStream.ReadNextStatePacket()
 			if readErr == io.EOF {
 				break
 			}
-			color.Cyan("#%d * (state) time:%v %v", packetIndex, time, hex.Dump(statePayload))
+			color.Cyan("#%04d * (state) time:%v %v", packetIndex, time, octetsToString(statePayload))
 		}
 	}
 	return nil

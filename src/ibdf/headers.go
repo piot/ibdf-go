@@ -40,7 +40,7 @@ func deserializeStateHeader(header piff.InHeader, payload []byte) (uint64, error
 	if header.TypeIDString() != "sta1" {
 		return 0, fmt.Errorf("wrong typeid %v", header)
 	}
-	if len(payload) != pktHeaderStateOctetCount {
+	if len(payload) < pktHeaderStateOctetCount {
 		return 0, fmt.Errorf("wrong serialized header size")
 	}
 	s := instream.New(payload)
@@ -63,7 +63,7 @@ func deserializePacketHeader(header piff.InHeader, payload []byte) (PacketDirect
 	if header.TypeIDString() != "pkt1" {
 		return 0, 0, fmt.Errorf("wrong typeid %v", header)
 	}
-	if len(payload) != pktHeaderOctetCount {
+	if len(payload) < pktHeaderOctetCount {
 		return 0, 0, fmt.Errorf("wrong serialized header size")
 	}
 	s := instream.New(payload)
