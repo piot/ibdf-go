@@ -62,8 +62,27 @@ func cmdToString(direction ibdf.PacketDirection) string {
 	}
 }
 
+func openReadSeeker(filename string) (io.ReadSeeker, error) {
+	var seekerToUse io.ReadSeeker
+	if filename == "" {
+		seekerToUse = os.Stdin
+	} else {
+		newFile, err := os.Open(filename)
+		if err != nil {
+			return nil, err
+		}
+		seekerToUse = newFile
+	}
+
+	return seekerToUse, nil
+}
+
 func run(filename string, log *clog.Log) error {
-	inFile, err := ibdf.NewInPacketFile(filename)
+	seekerToUse, seekerErr := openReadSeeker(filename)
+	if seekerErr != nil {
+		return seekerErr
+	}
+	inStream, err := ibdf.NewInPacketStream(seekerToUse)
 	if err != nil {
 		_, isStateError := err.(*ibdf.MissingStateError)
 		if !isStateError {
@@ -72,21 +91,28 @@ func run(filename string, log *clog.Log) error {
 	}
 
 	fmt.Printf("schema:\n")
-	color.HiGreen("%v\n", string(inFile.SchemaPayload()))
+	if !inStream.IsNextSchema() {
+		return fmt.Errorf("Must start with schema")
+	}
+	schemaString, schemaErr := inStream.ReadNextSchemaTextPacket()
+	if schemaErr != nil {
+		return schemaErr
+	}
+	color.HiGreen("%v\n", schemaString)
 
 	for packetIndex := 0; ; packetIndex++ {
-		if inFile.IsEOF() {
+		if inStream.IsEOF() {
 			break
 		}
-		if inFile.CursorAtPacket() {
-			cmd, time, payload, readErr := inFile.ReadNextPacket()
+		if inStream.IsNextPacket() {
+			cmd, time, payload, readErr := inStream.ReadNextPacket()
 			if readErr == io.EOF {
 				break
 			}
 			cmdString := cmdToString(cmd)
 			color.HiMagenta("#%d %s time:%v %v", packetIndex, cmdString, time, strings.TrimSpace(hex.Dump(payload)))
-		} else if inFile.CursorAtState() {
-			time, statePayload, readErr := inFile.ReadNextStatePacket()
+		} else if inStream.IsNextState() {
+			time, statePayload, readErr := inStream.ReadNextStatePacket()
 			if readErr == io.EOF {
 				break
 			}

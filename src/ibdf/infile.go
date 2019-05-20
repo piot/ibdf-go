@@ -188,49 +188,6 @@ func NewInPacketFile(filename string) (*InPacketFile, error) {
 	return c, err
 }
 
-const pktHeaderOctetCount = 1 + 8
-const pktHeaderStateOctetCount = 8
-
-func deserializeStateHeader(header piff.InHeader, payload []byte) (uint64, error) {
-	if header.TypeIDString() != "sta1" {
-		return 0, fmt.Errorf("wrong typeid %v", header)
-	}
-	if len(payload) != pktHeaderStateOctetCount {
-		return 0, fmt.Errorf("wrong serialized header size")
-	}
-	s := instream.New(payload)
-	monotonicTimeMs, timeMsErr := s.ReadUint64()
-	if timeMsErr != nil {
-		return 0, timeMsErr
-	}
-	return monotonicTimeMs, nil
-}
-
-func deserializePacketHeader(header piff.InHeader, payload []byte) (PacketDirection, uint64, error) {
-	if header.TypeIDString() != "pkt1" {
-		return 0, 0, fmt.Errorf("wrong typeid %v", header)
-	}
-	if len(payload) != pktHeaderOctetCount {
-		return 0, 0, fmt.Errorf("wrong serialized header size")
-	}
-	s := instream.New(payload)
-	cmdValue, cmdErr := s.ReadUint8()
-	if cmdErr != nil {
-		return 0, 0, cmdErr
-	}
-	switch cmdValue {
-	case CmdIncomingPacket:
-	case CmdOutgoingPacket:
-	default:
-		return CmdIncomingPacket, 0, fmt.Errorf("unknown direction")
-	}
-	monotonicTimeMs, timeMsErr := s.ReadUint64()
-	if timeMsErr != nil {
-		return 0, 0, timeMsErr
-	}
-	return cmdValue, monotonicTimeMs, nil
-}
-
 func (c *InPacketFile) advanceCursor() {
 	c.cursorPacketIndex++
 }
@@ -254,12 +211,7 @@ func (c *InPacketFile) ReadNextPacket() (PacketDirection, uint64, []byte, error)
 		return 0, 0, nil, readErr
 	}
 	c.advanceCursor()
-	pktHeaderOctets := payload[:pktHeaderOctetCount]
-	cmd, monotonicTimeMs, serializeErr := deserializePacketHeader(header, pktHeaderOctets)
-	if serializeErr != nil {
-		return 0, 0, nil, serializeErr
-	}
-	return cmd, monotonicTimeMs, payload[pktHeaderOctetCount:], nil
+	return deserializePacketFromPiffPayload(header, payload)
 }
 
 func (c *InPacketFile) ReadNextStatePacket() (uint64, []byte, error) {
@@ -271,12 +223,7 @@ func (c *InPacketFile) ReadNextStatePacket() (uint64, []byte, error) {
 		return 0, nil, readErr
 	}
 	c.advanceCursor()
-	pktHeaderStateOctets := payload[:pktHeaderStateOctetCount]
-	monotonicTimeMs, serializeErr := deserializeStateHeader(header, pktHeaderStateOctets)
-	if serializeErr != nil {
-		return 0, nil, serializeErr
-	}
-	return monotonicTimeMs, payload[pktHeaderStateOctetCount:], nil
+	return deserializeStatePacketFromPiffPayload(header, payload)
 }
 
 func (c *InPacketFile) Close() {
