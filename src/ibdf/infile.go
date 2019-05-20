@@ -116,11 +116,17 @@ func (c *InPacketFile) getInfo(packetIndex PacketIndex) HeaderInfo {
 }
 
 func (c *InPacketFile) CursorAtState() bool {
+	if c.IsEOF() {
+		return false
+	}
 	info := c.getInfo(c.cursorPacketIndex)
 	return info.packetType == PacketTypeState
 }
 
 func (c *InPacketFile) CursorAtPacket() bool {
+	if c.IsEOF() {
+		return false
+	}
 	info := c.getInfo(c.cursorPacketIndex)
 	return info.packetType == PacketTypeNormal
 }
