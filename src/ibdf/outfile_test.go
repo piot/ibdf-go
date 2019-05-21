@@ -52,11 +52,14 @@ func TestReadWritePacket(t *testing.T) {
 	}
 	f.Close()
 
-	i, openErr := NewInPacketFile(ibdFilename)
+	pf, openErr := NewInPacketFile(ibdFilename)
 	if openErr != nil {
 		t.Fatal(openErr)
 	}
-
+	i, iErr := NewInPacketFileSequenceFromInFile(pf)
+	if iErr != nil {
+		t.Fatal(iErr)
+	}
 	if !i.CursorAtState() {
 		t.Errorf("strange, we should be at a state packet now")
 	}
