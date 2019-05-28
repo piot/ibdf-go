@@ -42,6 +42,7 @@ type PacketType uint8
 const (
 	PacketTypeState PacketType = iota
 	PacketTypeNormal
+	PacketTypeOther
 )
 
 type HeaderInfo struct {
@@ -135,6 +136,7 @@ func (c *InPacketFile) scanAllChunks() error {
 			}
 			headerInfo = HeaderInfo{packetType: PacketTypeNormal, packetIndex: PacketIndex(packetIndex), timestamp: int64(time), direction: direction, octetCount: header.OctetCount()}
 		case "sch1": // do nothing
+			headerInfo = HeaderInfo{packetType: PacketTypeOther, packetIndex: PacketIndex(packetIndex), direction: CmdIncomingPacket}
 		default:
 			return fmt.Errorf("unknown type id %s", id)
 		}
@@ -221,7 +223,7 @@ func (c *InPacketFile) ReadPacket(packetIndex PacketIndex) (PacketDirection, uin
 		return 0, 0, nil, io.EOF
 	}
 	if c.IsState(packetIndex) {
-		return 0, 0, nil, fmt.Errorf("wrong packet type")
+		return 0, 0, nil, fmt.Errorf("read packet (%v): wrong packet type (encountered a state)", packetIndex)
 	}
 	header, payload, readErr := c.inFile.FindChunk(int(packetIndex))
 	if readErr != nil {
@@ -233,6 +235,9 @@ func (c *InPacketFile) ReadPacket(packetIndex PacketIndex) (PacketDirection, uin
 func (c *InPacketFile) ReadStatePacket(packetIndex PacketIndex) (uint64, []byte, error) {
 	if c.IsEOF(packetIndex) {
 		return 0, nil, io.EOF
+	}
+	if !c.IsState(packetIndex) {
+		return 0, nil, fmt.Errorf("read state packet (%v): wrong packet type", packetIndex)
 	}
 	header, payload, readErr := c.inFile.FindChunk(int(packetIndex))
 	if readErr != nil {
