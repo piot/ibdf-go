@@ -41,8 +41,9 @@ func TestReadWritePacket(t *testing.T) {
 	if outErr != nil {
 		t.Fatal(outErr)
 	}
+	firstKnownTime := int64(41)
 
-	writeStateErr := f.DebugState([]byte("this is a state"), 41)
+	writeStateErr := f.DebugState([]byte("this is a state"), firstKnownTime)
 	if writeStateErr != nil {
 		t.Fatal(writeStateErr)
 	}
@@ -104,9 +105,9 @@ func TestReadWritePacket(t *testing.T) {
 		t.Errorf("file should have ended")
 	}
 
-	stateTime, state, seekErr := i.SeekAndGetState(0)
+	stateTime, state, seekErr := i.SeekAndGetState(firstKnownTime + 10)
 	if seekErr != nil {
-		t.Errorf("couldnt seek")
+		t.Errorf("couldnt seek %v", seekErr)
 	}
 	if stateTime != 41 {
 		t.Errorf("unexpected state time %v", stateTime)

@@ -80,13 +80,13 @@ func (h HeaderInfo) String() string {
 type InPacketFile struct {
 	inFile        *piff.InSeeker
 	schemaPayload []byte
-	infos         []HeaderInfo
+	infos         []*HeaderInfo
 
 	startTime int64
 	endTime   int64
 }
 
-func (c *InPacketFile) AllHeaders() []HeaderInfo {
+func (c *InPacketFile) AllHeaders() []*HeaderInfo {
 	return c.infos
 }
 
@@ -107,11 +107,11 @@ func (c *InPacketFile) readSchema() ([]byte, error) {
 }
 
 func (c *InPacketFile) scanAllChunks() error {
-	var infos []HeaderInfo
+	var infos []*HeaderInfo
 	foundSomeState := false
 	for packetIndex, seekHeader := range c.inFile.AllHeaders() {
 		id := seekHeader.Header().TypeIDString()
-		var headerInfo HeaderInfo
+		var headerInfo *HeaderInfo
 		switch id {
 		case "sta1":
 			header, octets, foundErr := c.inFile.FindPartialChunk(packetIndex, 8)
@@ -123,7 +123,7 @@ func (c *InPacketFile) scanAllChunks() error {
 			if timestampErr != nil {
 				return timestampErr
 			}
-			headerInfo = HeaderInfo{packetType: PacketTypeState, packetIndex: PacketIndex(packetIndex), timestamp: int64(timestamp), octetCount: header.OctetCount()}
+			headerInfo = &HeaderInfo{packetType: PacketTypeState, packetIndex: PacketIndex(packetIndex), timestamp: int64(timestamp), octetCount: header.OctetCount()}
 			foundSomeState = true
 		case "pkt1":
 			header, payload, foundErr := c.inFile.FindPartialChunk(packetIndex, pktHeaderOctetCount)
@@ -134,9 +134,9 @@ func (c *InPacketFile) scanAllChunks() error {
 			if deserializeErr != nil {
 				return deserializeErr
 			}
-			headerInfo = HeaderInfo{packetType: PacketTypeNormal, packetIndex: PacketIndex(packetIndex), timestamp: int64(time), direction: direction, octetCount: header.OctetCount()}
+			headerInfo = &HeaderInfo{packetType: PacketTypeNormal, packetIndex: PacketIndex(packetIndex), timestamp: int64(time), direction: direction, octetCount: header.OctetCount()}
 		case "sch1": // do nothing
-			headerInfo = HeaderInfo{packetType: PacketTypeOther, packetIndex: PacketIndex(packetIndex), direction: CmdIncomingPacket}
+			headerInfo = &HeaderInfo{packetType: PacketTypeOther, packetIndex: PacketIndex(packetIndex), direction: CmdIncomingPacket}
 		default:
 			return fmt.Errorf("unknown type id %s", id)
 		}
@@ -151,7 +151,7 @@ func (c *InPacketFile) scanAllChunks() error {
 	return nil
 }
 
-func (c *InPacketFile) getInfo(packetIndex PacketIndex) HeaderInfo {
+func (c *InPacketFile) getInfo(packetIndex PacketIndex) *HeaderInfo {
 	return c.infos[packetIndex]
 }
 
@@ -180,7 +180,7 @@ func (c *InPacketFile) FindClosestStateBeforeOrAt(timestamp int64) *HeaderInfo {
 		if info.timestamp > timestamp {
 			return foundStateInfo
 		}
-		foundStateInfo = &info
+		foundStateInfo = info
 	}
 	return foundStateInfo
 }
