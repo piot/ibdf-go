@@ -27,6 +27,8 @@ SOFTWARE.
 package ibdf
 
 import (
+	"os"
+
 	"github.com/piot/brook-go/src/outstream"
 	"github.com/piot/piff-go/src/piff"
 )
@@ -47,10 +49,26 @@ func NewOutPacketFile(filename string, schemaPayload []byte) (*OutPacketFile, er
 	if err != nil {
 		return nil, err
 	}
+	return internalCreate(newPiffFile, schemaPayload)
+}
+
+func NewOutPacketFileUsingFile(file *os.File, schemaPayload []byte) (*OutPacketFile, error) {
+	newPiffFile, err := piff.NewOutStreamFile(file)
+	if err != nil {
+		return nil, err
+	}
+
+	return internalCreate(newPiffFile, schemaPayload)
+}
+
+func internalCreate(newPiffFile *piff.OutStream, schemaPayload []byte) (*OutPacketFile, error) {
 	c := &OutPacketFile{
 		outFile: newPiffFile,
 	}
-	c.outFile.WriteChunkTypeIDString("sch1", schemaPayload)
+	writeErr := c.outFile.WriteChunkTypeIDString("sch1", schemaPayload)
+	if writeErr != nil {
+		return nil, writeErr
+	}
 	return c, nil
 }
 
