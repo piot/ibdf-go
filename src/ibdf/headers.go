@@ -110,7 +110,7 @@ func deserializeStatePacketFromStream(stream *piff.InStream) (uint64, []byte, er
 }
 
 func deserializeStatePacketFromPiffPayload(header piff.InHeader, payload []byte) (uint64, []byte, error) {
-	stateHeaderOctets := payload[:pktHeaderOctetCount]
+	stateHeaderOctets := payload[:pktHeaderStateOctetCount]
 	monotonicTimeMs, serializeErr := deserializeStateHeader(header, stateHeaderOctets)
 	if serializeErr != nil {
 		return 0, nil, serializeErr
