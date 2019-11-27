@@ -27,6 +27,7 @@ SOFTWARE.
 package main
 
 import (
+	"encoding/base64"
 	"encoding/hex"
 	"flag"
 	"fmt"
@@ -78,7 +79,8 @@ func openReadSeeker(filename string) (io.ReadSeeker, error) {
 }
 
 func octetsToString(payload []byte) string {
-	return strings.TrimSpace(hex.Dump(payload))
+	base64String := base64.StdEncoding.EncodeToString(payload)
+	return strings.TrimSpace(hex.Dump(payload)) + "\n" + base64String + "\n"
 }
 
 func run(filename string, log *clog.Log) error {
