@@ -11,10 +11,12 @@ github.com/piot/brook-go v0.0.0-20191112122856-044790a8729a h1:byqikXm+ERD8ZDJ1t
 github.com/piot/brook-go v0.0.0-20191112122856-044790a8729a/go.mod h1:XOBgIv7ob0m4m0noN1JVeuFrQs3LUxWdaFL+AyP6AGA=
 github.com/piot/log-go v0.0.0-20191014203607-09e9b309a41b h1:FUqUU8h3IZe1L1NqkpaJnz7vLF4Fo2/z7VbxgpEhLww=
 github.com/piot/log-go v0.0.0-20191014203607-09e9b309a41b/go.mod h1:pZwcBRw/9V9K7Z1MMHW+mlx/xkOhqZR+sWarMTR0Ucs=
-github.com/piot/piff-go v0.0.0-20191120220713-acd175b98309 h1:6V8yRcMaXM1954ytfV52XioEoBQ0RvRYSsaoow3fq+0=
-github.com/piot/piff-go v0.0.0-20191120220713-acd175b98309/go.mod h1:2WykDczzZWNrxkBPcWvQFD/j4xwatsYMauHZPe4iZu8=
+github.com/piot/piff-go v0.0.0-20191127155735-801ce06497bb h1:ncz1fxN1ed18fA9jz65b9eba5+HyWyS0EqKGNC6jIzg=
+github.com/piot/piff-go v0.0.0-20191127155735-801ce06497bb/go.mod h1:2WykDczzZWNrxkBPcWvQFD/j4xwatsYMauHZPe4iZu8=
 golang.org/x/sys v0.0.0-20190222072716-a9d3bda3a223/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20191008105621-543471e840be/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20191010194322-b09406accb47/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20191120155948-bd437916bb0e h1:N7DeIrjYszNmSW409R3frPPwglRwMkXSBzwVbkOjLLA=
 golang.org/x/sys v0.0.0-20191120155948-bd437916bb0e/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
+golang.org/x/sys v0.0.0-20191128015809-6d18c012aee9 h1:ZBzSG/7F4eNKz2L3GE9o300RX0Az1Bw5HF7PDraD+qU=
+golang.org/x/sys v0.0.0-20191128015809-6d18c012aee9/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
