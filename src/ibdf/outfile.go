@@ -61,10 +61,38 @@ func NewOutPacketFileUsingFile(file *os.File, schemaPayload []byte) (*OutPacketF
 	return internalCreate(newPiffFile, schemaPayload)
 }
 
-func internalCreate(newPiffFile *piff.OutStream, schemaPayload []byte) (*OutPacketFile, error) {
+func writeString(out *outstream.OutStream, s string) error {
+	lengthErr := out.WriteUint8(uint8(len(s)))
+	if lengthErr != nil {
+		return lengthErr
+	}
+	applicationErr := out.WriteOctets([]byte(s))
+	if applicationErr != nil {
+		return applicationErr
+	}
+
+	return nil
+}
+
+type Header struct {
+	CompanyName         string
+	ApplicationName     string
+	ApplicationVersion  string
+	CoherenceSDKVersion string
+}
+
+func internalCreate(newPiffFile *piff.OutStream, header Header, schemaPayload []byte) (*OutPacketFile, error) {
 	c := &OutPacketFile{
 		outFile: newPiffFile,
 	}
+
+	pa1 := outstream.New()
+	writeString(pa1, header.CompanyName)
+	writeString(pa1, header.ApplicationName)
+	writeString(pa1, header.ApplicationVersion)
+	writeString(pa1, header.CoherenceSDKVersion)
+	c.outFile.WriteChunkTypeIDString("pa1", pa1.Octets())
+
 	writeErr := c.outFile.WriteChunkTypeIDString("sch1", schemaPayload)
 	if writeErr != nil {
 		return nil, writeErr
