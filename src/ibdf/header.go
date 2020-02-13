@@ -42,9 +42,10 @@ type Header struct {
 	Application   NameAndVersion
 	NetworkEngine NameAndVersion
 	Protocol      NameAndVersion
+	Schema        NameAndVersion
 }
 
 func (h Header) String() string {
-	return fmt.Sprintf("Company: %v\nApplication: %v\nNetworkEngine: %v\nProtocol: %v", h.CompanyName,
-		h.Application, h.NetworkEngine, h.Protocol)
+	return fmt.Sprintf("Company: %v\nApplication: %v\nSchema: %v\nNetworkEngine: %v\nProtocol: %v", h.CompanyName,
+		h.Application, h.Schema, h.NetworkEngine, h.Protocol)
 }

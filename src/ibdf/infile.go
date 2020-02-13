@@ -155,6 +155,12 @@ func readHeader(in *instream.InStream) (Header, error) {
 	if err != nil {
 		return header, err
 	}
+
+	header.Schema, err = readNameAndVersion(in)
+	if err != nil {
+		return header, err
+	}
+
 	header.NetworkEngine, err = readNameAndVersion(in)
 	if err != nil {
 		return header, err

@@ -74,9 +74,40 @@ func writeString(out *outstream.OutStream, s string) error {
 	return nil
 }
 
-func writeNameAndVersion(stream *outstream.OutStream, nameAndVersion NameAndVersion) {
-	writeString(stream, nameAndVersion.Name)
-	writeString(stream, nameAndVersion.Version)
+func writeNameAndVersion(stream *outstream.OutStream, nameAndVersion NameAndVersion) error {
+	nameErr := writeString(stream, nameAndVersion.Name)
+	if nameErr != nil {
+		return nameErr
+	}
+	versionErr := writeString(stream, nameAndVersion.Version)
+	if versionErr != nil {
+		return versionErr
+	}
+
+	return nil
+}
+
+func writeHeader(headerStream *outstream.OutStream, header Header) error {
+	companyErr := writeString(headerStream, header.CompanyName)
+	if companyErr != nil {
+		return companyErr
+	}
+	appErr := writeNameAndVersion(headerStream, header.Application)
+	if appErr != nil {
+		return appErr
+	}
+	schemaErr := writeNameAndVersion(headerStream, header.Schema)
+	if schemaErr != nil {
+		return schemaErr
+	}
+
+	networkErr := writeNameAndVersion(headerStream, header.NetworkEngine)
+	if networkErr != nil {
+		return networkErr
+	}
+
+	protocolErr := writeNameAndVersion(headerStream, header.Protocol)
+	return protocolErr
 }
 
 func internalCreate(newPiffFile *piff.OutStream, header Header, schemaPayload []byte) (*OutPacketFile, error) {
@@ -84,12 +115,12 @@ func internalCreate(newPiffFile *piff.OutStream, header Header, schemaPayload []
 		outFile: newPiffFile,
 	}
 
-	pa1 := outstream.New()
-	writeString(pa1, header.CompanyName)
-	writeNameAndVersion(pa1, header.Application)
-	writeNameAndVersion(pa1, header.NetworkEngine)
-	writeNameAndVersion(pa1, header.Protocol)
-	c.outFile.WriteChunkTypeIDString("pac1", pa1.Octets())
+	headerStream := outstream.New()
+	headerErr := writeHeader(headerStream, header)
+	if headerErr != nil {
+		return nil, headerErr
+	}
+	c.outFile.WriteChunkTypeIDString("pac1", headerStream.Octets())
 
 	writeErr := c.outFile.WriteChunkTypeIDString("sch1", schemaPayload)
 	if writeErr != nil {

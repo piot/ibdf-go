@@ -44,6 +44,10 @@ func TestReadWritePacket(t *testing.T) {
 			Name:    "App",
 			Version: "1.2.3",
 		},
+		Schema: NameAndVersion{
+			Name:    "Schema",
+			Version: "a.b.c",
+		},
 		NetworkEngine: NameAndVersion{
 			Name:    "Net",
 			Version: "22.33.44",
