@@ -44,21 +44,21 @@ type OutPacketFile struct {
 	outFile *piff.OutStream
 }
 
-func NewOutPacketFile(filename string, schemaPayload []byte) (*OutPacketFile, error) {
+func NewOutPacketFile(filename string, header Header, schemaPayload []byte) (*OutPacketFile, error) {
 	newPiffFile, err := piff.NewOutStream(filename)
 	if err != nil {
 		return nil, err
 	}
-	return internalCreate(newPiffFile, schemaPayload)
+	return internalCreate(newPiffFile, header, schemaPayload)
 }
 
-func NewOutPacketFileUsingFile(file *os.File, schemaPayload []byte) (*OutPacketFile, error) {
+func NewOutPacketFileUsingFile(file *os.File, header Header, schemaPayload []byte) (*OutPacketFile, error) {
 	newPiffFile, err := piff.NewOutStreamFile(file)
 	if err != nil {
 		return nil, err
 	}
 
-	return internalCreate(newPiffFile, schemaPayload)
+	return internalCreate(newPiffFile, header, schemaPayload)
 }
 
 func writeString(out *outstream.OutStream, s string) error {
@@ -74,11 +74,9 @@ func writeString(out *outstream.OutStream, s string) error {
 	return nil
 }
 
-type Header struct {
-	CompanyName         string
-	ApplicationName     string
-	ApplicationVersion  string
-	CoherenceSDKVersion string
+func writeNameAndVersion(stream *outstream.OutStream, nameAndVersion NameAndVersion) {
+	writeString(stream, nameAndVersion.Name)
+	writeString(stream, nameAndVersion.Version)
 }
 
 func internalCreate(newPiffFile *piff.OutStream, header Header, schemaPayload []byte) (*OutPacketFile, error) {
@@ -88,10 +86,10 @@ func internalCreate(newPiffFile *piff.OutStream, header Header, schemaPayload []
 
 	pa1 := outstream.New()
 	writeString(pa1, header.CompanyName)
-	writeString(pa1, header.ApplicationName)
-	writeString(pa1, header.ApplicationVersion)
-	writeString(pa1, header.CoherenceSDKVersion)
-	c.outFile.WriteChunkTypeIDString("pa1", pa1.Octets())
+	writeNameAndVersion(pa1, header.Application)
+	writeNameAndVersion(pa1, header.NetworkEngine)
+	writeNameAndVersion(pa1, header.Protocol)
+	c.outFile.WriteChunkTypeIDString("pac1", pa1.Octets())
 
 	writeErr := c.outFile.WriteChunkTypeIDString("sch1", schemaPayload)
 	if writeErr != nil {

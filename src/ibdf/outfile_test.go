@@ -36,8 +36,25 @@ func TestReadWritePacket(t *testing.T) {
 	const testString = "this is a string"
 	const ibdFilename = "test.ibdf"
 	const typeID = "cafe"
+
 	octetPayload := []byte(testString)
-	f, outErr := NewOutPacketFile(ibdFilename, nil)
+	header := Header{
+		CompanyName: "SomeCompany",
+		Application: NameAndVersion{
+			Name:    "App",
+			Version: "1.2.3",
+		},
+		NetworkEngine: NameAndVersion{
+			Name:    "Net",
+			Version: "22.33.44",
+		},
+		Protocol: NameAndVersion{
+			Name:    "UDPC",
+			Version: "91.9.1",
+		},
+	}
+
+	f, outErr := NewOutPacketFile(ibdFilename, header, nil)
 	if outErr != nil {
 		t.Fatal(outErr)
 	}
@@ -51,11 +68,15 @@ func TestReadWritePacket(t *testing.T) {
 	if writeErr != nil {
 		t.Fatal(writeErr)
 	}
+
 	f.Close()
 
 	pf, openErr := NewInPacketFile(ibdFilename)
 	if openErr != nil {
 		t.Fatal(openErr)
+	}
+	if pf.Header().NetworkEngine.Version != "22.33.44" {
+		t.Errorf("wrong version %v", pf.Header())
 	}
 	i, iErr := NewInPacketFileSequenceFromInFile(pf)
 	if iErr != nil {
