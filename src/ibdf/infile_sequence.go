@@ -76,7 +76,7 @@ func (c *InPacketFileSequence) Cursor() PacketIndex {
 func NewInPacketFileSequenceFromInFile(inFile *InPacketFile) (*InPacketFileSequence, error) {
 	c := &InPacketFileSequence{
 		inFile:            inFile,
-		cursorPacketIndex: 1,
+		cursorPacketIndex: 2,
 	}
 
 	return c, nil

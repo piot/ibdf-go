@@ -30,6 +30,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 
 	"github.com/piot/brook-go/src/instream"
 	"github.com/piot/piff-go/src/piff"
@@ -81,6 +82,7 @@ type InPacketFile struct {
 	inFile        *piff.InSeeker
 	schemaPayload []byte
 	infos         []*HeaderInfo
+	header        Header
 
 	startTime int64
 	endTime   int64
@@ -94,8 +96,12 @@ func (c *InPacketFile) SchemaPayload() []byte {
 	return c.schemaPayload
 }
 
+func (c *InPacketFile) Header() Header {
+	return c.header
+}
+
 func (c *InPacketFile) readSchema() ([]byte, error) {
-	header, payload, readErr := c.inFile.FindChunk(0)
+	header, payload, readErr := c.inFile.FindChunk(1)
 	if readErr != nil {
 		return nil, fmt.Errorf("read schema %v", readErr)
 	}
@@ -106,6 +112,70 @@ func (c *InPacketFile) readSchema() ([]byte, error) {
 	return payload, nil
 }
 
+func readString(in *instream.InStream) (string, error) {
+	length, lengthErr := in.ReadUint8()
+	if lengthErr != nil {
+		return "", lengthErr
+	}
+
+	runes, runesErr := in.ReadOctets(int(length))
+	if runesErr != nil {
+		return "", runesErr
+	}
+
+	return string(runes), nil
+}
+
+func readNameAndVersion(stream *instream.InStream) (NameAndVersion, error) {
+	var nameAndVersion NameAndVersion
+	var err error
+	nameAndVersion.Name, err = readString(stream)
+	if err != nil {
+		return NameAndVersion{}, err
+	}
+
+	nameAndVersion.Version, err = readString(stream)
+	if err != nil {
+		return NameAndVersion{}, err
+	}
+
+	return nameAndVersion, nil
+}
+
+func readHeader(in *instream.InStream) (Header, error) {
+	var header Header
+	var err error
+
+	header.CompanyName, err = readString(in)
+	if err != nil {
+		return header, nil
+	}
+	header.Application, err = readNameAndVersion(in)
+	if err != nil {
+		return header, err
+	}
+	header.NetworkEngine, err = readNameAndVersion(in)
+	if err != nil {
+		return header, err
+	}
+
+	header.Protocol, err = readNameAndVersion(in)
+	return header, err
+}
+
+func (c *InPacketFile) readHeader(piffStream *piff.InSeeker) (Header, error) {
+	header, payload, readErr := piffStream.FindChunk(0)
+	if readErr != nil {
+		return Header{}, fmt.Errorf("read schema %v", readErr)
+	}
+	if header.TypeIDString() != "pac1" {
+		return Header{}, fmt.Errorf("wrong packet header typeid %v", header)
+	}
+
+	stream := instream.New(payload)
+	return readHeader(stream)
+}
+
 func (c *InPacketFile) scanAllChunks() error {
 	var infos []*HeaderInfo
 	foundSomeState := false
@@ -113,6 +183,8 @@ func (c *InPacketFile) scanAllChunks() error {
 		id := seekHeader.Header().TypeIDString()
 		var headerInfo *HeaderInfo
 		switch id {
+		case "pac1":
+			headerInfo = &HeaderInfo{packetType: PacketTypeOther, packetIndex: PacketIndex(packetIndex), direction: CmdIncomingPacket}
 		case "sta1":
 			header, octets, foundErr := c.inFile.FindPartialChunk(packetIndex, 8)
 			if foundErr != nil {
@@ -173,6 +245,7 @@ func (c *InPacketFile) IsPacket(packetIndex PacketIndex) bool {
 
 func (c *InPacketFile) FindClosestStateBeforeOrAt(timestamp int64) *HeaderInfo {
 	var foundStateInfo *HeaderInfo
+
 	for _, info := range c.infos {
 		if info.packetType != PacketTypeState {
 			continue
@@ -186,7 +259,7 @@ func (c *InPacketFile) FindClosestStateBeforeOrAt(timestamp int64) *HeaderInfo {
 }
 
 func NewInPacketFile(filename string) (*InPacketFile, error) {
-	seeker, openErr := os.Open(filename)
+	seeker, openErr := os.Open(path.Clean(filename))
 	if openErr != nil {
 		return nil, openErr
 	}
@@ -201,6 +274,12 @@ func NewInPacketFileFromSeeker(readSeeker io.ReadSeeker) (*InPacketFile, error) 
 	c := &InPacketFile{
 		inFile: newPiffFile,
 	}
+	var headerErr error
+	c.header, headerErr = c.readHeader(newPiffFile)
+	if headerErr != nil {
+		return nil, headerErr
+	}
+
 	schemaOctets, err := c.readSchema()
 	if err != nil {
 		return nil, err
