@@ -29,6 +29,7 @@ package ibdf
 import (
 	"io"
 
+	"github.com/piot/brook-go/src/instream"
 	"github.com/piot/piff-go/src/piff"
 )
 
@@ -61,6 +62,11 @@ func (i *InStream) IsNextPacket() bool {
 	return piffHeader.TypeIDString() == "pkt1"
 }
 
+func (i *InStream) IsNextFileHeader() bool {
+	piffHeader := i.stream.PendingChunkHeader()
+	return piffHeader.TypeIDString() == "pac1"
+}
+
 func (i *InStream) ReadNextPacket() (PacketDirection, uint64, []byte, error) {
 	return deserializePacketFromStream(i.stream)
 }
@@ -71,6 +77,15 @@ func (i *InStream) ReadNextStatePacket() (uint64, []byte, error) {
 
 func (i *InStream) ReadNextSchemaTextPacket() (string, error) {
 	return deserializeSchemaTextFromStream(i.stream)
+}
+
+func (i *InStream) ReadNextFileHeader() (Header, error) {
+	_, payload, err := i.stream.ReadChunk()
+	if err != nil {
+		return Header{}, err
+	}
+	stream := instream.New(payload)
+	return readHeader(stream)
 }
 
 func (i *InStream) IsEOF() bool {

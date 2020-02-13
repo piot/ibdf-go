@@ -96,6 +96,12 @@ func run(filename string, log *clog.Log) error {
 		}
 	}
 
+	header, headerErr := inStream.ReadNextFileHeader()
+	if headerErr != nil {
+		return headerErr
+	}
+	color.HiMagenta(header.String())
+
 	fmt.Printf("schema:\n")
 	if !inStream.IsNextSchema() {
 		return fmt.Errorf("Must start with schema")

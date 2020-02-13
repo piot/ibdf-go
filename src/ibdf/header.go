@@ -26,9 +26,15 @@ SOFTWARE.
 
 package ibdf
 
+import "fmt"
+
 type NameAndVersion struct {
 	Name    string
 	Version string
+}
+
+func (n NameAndVersion) String() string {
+	return fmt.Sprintf("[%v %v]", n.Name, n.Version)
 }
 
 type Header struct {
@@ -36,4 +42,9 @@ type Header struct {
 	Application   NameAndVersion
 	NetworkEngine NameAndVersion
 	Protocol      NameAndVersion
+}
+
+func (h Header) String() string {
+	return fmt.Sprintf("Company: %v\nApplication: %v\nNetworkEngine: %v\nProtocol: %v", h.CompanyName,
+		h.Application, h.NetworkEngine, h.Protocol)
 }

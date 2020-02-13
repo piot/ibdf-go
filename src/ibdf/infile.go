@@ -144,6 +144,7 @@ func readNameAndVersion(stream *instream.InStream) (NameAndVersion, error) {
 
 func readHeader(in *instream.InStream) (Header, error) {
 	var header Header
+
 	var err error
 
 	header.CompanyName, err = readString(in)
