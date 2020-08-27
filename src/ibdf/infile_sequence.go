@@ -100,7 +100,7 @@ func (c *InPacketFileSequence) ReadNextPacket() (PacketDirection, uint64, []byte
 	if c.IsEOF() {
 		return 0, 0, nil, io.EOF
 	}
-	direction, time, payload, readErr := c.inFile.ReadPacket(c.cursorPacketIndex)
+	_, direction, time, payload, readErr := c.inFile.ReadPacket(c.cursorPacketIndex)
 	if readErr != nil {
 		return 0, 0, nil, readErr
 	}
@@ -112,7 +112,7 @@ func (c *InPacketFileSequence) ReadNextStatePacket() (uint64, []byte, error) {
 	if c.IsEOF() {
 		return 0, nil, io.EOF
 	}
-	time, payload, readErr := c.inFile.ReadStatePacket(c.cursorPacketIndex)
+	_, time, payload, readErr := c.inFile.ReadStatePacket(c.cursorPacketIndex)
 	if readErr != nil {
 		return 0, nil, readErr
 	}

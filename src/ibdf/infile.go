@@ -304,30 +304,30 @@ func (c *InPacketFile) IsEOF(packetIndex PacketIndex) bool {
 	return int(packetIndex) >= len(c.infos)
 }
 
-func (c *InPacketFile) ReadPacket(packetIndex PacketIndex) (PacketDirection, uint64, []byte, error) {
+func (c *InPacketFile) ReadPacket(packetIndex PacketIndex) (piff.ChunkIndex, PacketDirection, uint64, []byte, error) {
 	if c.IsEOF(packetIndex) {
-		return 0, 0, nil, io.EOF
+		return 0, 0, 0, nil, io.EOF
 	}
 	if c.IsState(packetIndex) {
-		return 0, 0, nil, fmt.Errorf("read packet (%v): wrong packet type (encountered a state)", packetIndex)
+		return 0, 0, 0, nil, fmt.Errorf("read packet (%v): wrong packet type (encountered a state)", packetIndex)
 	}
 	header, payload, readErr := c.inFile.FindChunk(int(packetIndex))
 	if readErr != nil {
-		return 0, 0, nil, readErr
+		return 0, 0, 0, nil, readErr
 	}
 	return deserializePacketFromPiffPayload(header, payload)
 }
 
-func (c *InPacketFile) ReadStatePacket(packetIndex PacketIndex) (uint64, []byte, error) {
+func (c *InPacketFile) ReadStatePacket(packetIndex PacketIndex) (piff.ChunkIndex, uint64, []byte, error) {
 	if c.IsEOF(packetIndex) {
-		return 0, nil, io.EOF
+		return 0, 0, nil, io.EOF
 	}
 	if !c.IsState(packetIndex) {
-		return 0, nil, fmt.Errorf("read state packet (%v): wrong packet type", packetIndex)
+		return 0, 0, nil, fmt.Errorf("read state packet (%v): wrong packet type", packetIndex)
 	}
 	header, payload, readErr := c.inFile.FindChunk(int(packetIndex))
 	if readErr != nil {
-		return 0, nil, readErr
+		return 0, 0, nil, readErr
 	}
 	return deserializeStatePacketFromPiffPayload(header, payload)
 }

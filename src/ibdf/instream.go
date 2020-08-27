@@ -67,11 +67,11 @@ func (i *InStream) IsNextFileHeader() bool {
 	return piffHeader.TypeIDString() == "pac1"
 }
 
-func (i *InStream) ReadNextPacket() (PacketDirection, uint64, []byte, error) {
+func (i *InStream) ReadNextPacket() (piff.ChunkIndex, PacketDirection, uint64, []byte, error) {
 	return deserializePacketFromStream(i.stream)
 }
 
-func (i *InStream) ReadNextStatePacket() (uint64, []byte, error) {
+func (i *InStream) ReadNextStatePacket() (piff.ChunkIndex, uint64, []byte, error) {
 	return deserializeStatePacketFromStream(i.stream)
 }
 

@@ -112,35 +112,49 @@ func run(filename string, log *clog.Log) error {
 	}
 	color.HiGreen("%v\n", schemaString)
 
-	for packetIndex := 0; ; packetIndex++ {
-		if inStream.IsEOF() {
-			break
-		}
+	outgoingIndex := 0
+	incomingIndex := 0
+
+	for !inStream.IsEOF() {
 		if inStream.IsNextPacket() {
-			cmd, time, payload, readErr := inStream.ReadNextPacket()
+			chunkIndex, cmd, time, payload, readErr := inStream.ReadNextPacket()
 			if readErr == io.EOF {
 				break
 			}
 			cmdString := cmdToString(cmd)
 			headerColor := color.New(color.FgMagenta)
 			payloadColor := color.New(color.FgHiMagenta)
+			filteredIndexToShow := 0
 			if cmd == ibdf.CmdOutgoingPacket {
 				headerColor = color.New(color.FgBlue)
 				payloadColor = color.New(color.FgHiBlue)
+				filteredIndexToShow = outgoingIndex
+			} else if cmd == ibdf.CmdIncomingPacket {
+				filteredIndexToShow = incomingIndex
 			}
 
-			headerColor.Printf("#%04d %s time:%v (%v octets)\n", packetIndex, cmdString, time, len(payload))
+			headerColor.Printf("#%04d (filtered #%04d) %s time:%v (%v octets)\n", chunkIndex, filteredIndexToShow, cmdString, time, len(payload))
 			payloadColor.Println(octetsToString(payload))
+
+			if cmd == ibdf.CmdOutgoingPacket {
+				outgoingIndex++
+			} else if cmd == ibdf.CmdIncomingPacket {
+				incomingIndex++
+			}
 		} else if inStream.IsNextState() {
-			time, statePayload, readErr := inStream.ReadNextStatePacket()
+			chunkIndex, time, statePayload, readErr := inStream.ReadNextStatePacket()
 			if readErr == io.EOF {
 				break
 			}
-			color.Cyan("#%04d * (state) time:%v (%v octets)", packetIndex, time, len(statePayload))
+			color.Cyan("#%04d * (state) time:%v (%v octets)", chunkIndex, time, len(statePayload))
 			color.HiCyan(octetsToString(statePayload))
+			fmt.Println("")
+		} else {
+			color.Red("Unknown packet!")
 			fmt.Println("")
 		}
 	}
+
 	return nil
 }
 
@@ -153,5 +167,6 @@ func main() {
 		log.Err(err)
 		os.Exit(1)
 	}
+
 	log.Info("Done!")
 }

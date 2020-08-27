@@ -84,38 +84,38 @@ func deserializePacketHeader(header piff.InHeader, payload []byte) (PacketDirect
 	return cmdValue, monotonicTimeMs, nil
 }
 
-func deserializePacketFromStream(stream *piff.InStream) (PacketDirection, uint64, []byte, error) {
+func deserializePacketFromStream(stream *piff.InStream) (piff.ChunkIndex, PacketDirection, uint64, []byte, error) {
 	header, payload, readErr := stream.ReadChunk()
 	if readErr != nil {
-		return CmdIncomingPacket, 0, nil, readErr
+		return 0, CmdIncomingPacket, 0, nil, readErr
 	}
 	return deserializePacketFromPiffPayload(header, payload)
 }
 
-func deserializePacketFromPiffPayload(header piff.InHeader, payload []byte) (PacketDirection, uint64, []byte, error) {
+func deserializePacketFromPiffPayload(header piff.InHeader, payload []byte) (piff.ChunkIndex, PacketDirection, uint64, []byte, error) {
 	pktHeaderOctets := payload[:pktHeaderOctetCount]
 	cmd, monotonicTimeMs, serializeErr := deserializePacketHeader(header, pktHeaderOctets)
 	if serializeErr != nil {
-		return 0, 0, nil, serializeErr
+		return 0, 0, 0, nil, serializeErr
 	}
-	return cmd, monotonicTimeMs, payload[pktHeaderOctetCount:], nil
+	return header.ChunkIndex(), cmd, monotonicTimeMs, payload[pktHeaderOctetCount:], nil
 }
 
-func deserializeStatePacketFromStream(stream *piff.InStream) (uint64, []byte, error) {
+func deserializeStatePacketFromStream(stream *piff.InStream) (piff.ChunkIndex, uint64, []byte, error) {
 	header, payload, readErr := stream.ReadChunk()
 	if readErr != nil {
-		return 0, nil, readErr
+		return 0, 0, nil, readErr
 	}
 	return deserializeStatePacketFromPiffPayload(header, payload)
 }
 
-func deserializeStatePacketFromPiffPayload(header piff.InHeader, payload []byte) (uint64, []byte, error) {
+func deserializeStatePacketFromPiffPayload(header piff.InHeader, payload []byte) (piff.ChunkIndex, uint64, []byte, error) {
 	stateHeaderOctets := payload[:pktHeaderStateOctetCount]
 	monotonicTimeMs, serializeErr := deserializeStateHeader(header, stateHeaderOctets)
 	if serializeErr != nil {
-		return 0, nil, serializeErr
+		return 0, 0, nil, serializeErr
 	}
-	return monotonicTimeMs, payload[pktHeaderStateOctetCount:], nil
+	return header.ChunkIndex(), monotonicTimeMs, payload[pktHeaderStateOctetCount:], nil
 }
 
 func deserializeSchemaTextFromStream(stream *piff.InStream) (string, error) {
